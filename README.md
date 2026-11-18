@@ -1,5 +1,5 @@
 
-## Paso 7: reportes y campañas (rol Encargado del centro / Administrador)
+reportes y campañas (rol Encargado del centro / Administrador)
 
 Instalar las dependencias nuevas en el backend: `pip install -r requirements.txt` (openpyxl y reportlab).
 
