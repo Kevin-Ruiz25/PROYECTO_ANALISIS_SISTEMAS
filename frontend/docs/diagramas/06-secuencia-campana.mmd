@@ -1,0 +1,26 @@
+sequenceDiagram
+  autonumber
+  actor G as Encargado del centro
+  participant FE as Frontend
+  participant API as Backend
+  participant RP as reports.py
+  participant NO as notify.py
+  participant DB as Base de datos
+  participant CH as Correo / Telegram / WhatsApp
+  actor P as Padres
+
+  G->>FE: elige comunidades, edades y estado de vacunación
+  FE->>API: POST /campaigns/preview
+  API->>RP: snapshots() + campaign_targets()
+  RP->>DB: niños, vacunas y controles
+  RP-->>API: niños que cumplen los filtros
+  API->>NO: pick_channel() por cada padre (sin repetir)
+  API-->>FE: niños, padres, canales y sin contacto
+  G->>FE: escribe el mensaje y confirma
+  FE->>API: POST /campaigns/send
+  loop un aviso por padre (aunque tenga varios hijos)
+    API->>DB: crea Notification con los nombres de sus niños
+  end
+  API->>CH: dispatch_pending()
+  CH-->>P: aviso de la campaña
+  API-->>FE: resumen (enviados, sin contacto, errores)

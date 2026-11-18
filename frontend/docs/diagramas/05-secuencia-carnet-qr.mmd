@@ -1,0 +1,38 @@
+sequenceDiagram
+  autonumber
+  actor E as Personal de salud
+  actor P as Padre / tutor
+  participant FE as Frontend
+  participant API as Backend
+  participant DB as Base de datos
+
+  Note over E,DB: Emisión del carnet
+  E->>FE: Genera carnet del niño
+  FE->>API: POST /children/{id}/carnet
+  API->>API: token aleatorio + PIN de 6 dígitos
+  API->>DB: guarda token y hash bcrypt del PIN
+  API-->>FE: QR (imagen) + PIN (se muestra una sola vez)
+  E->>P: entrega el carnet impreso y el PIN
+
+  Note over P,DB: Consulta por el padre
+  P->>FE: escanea el QR (abre /carnet/{token})
+  alt No tiene sesión
+    FE->>P: pide iniciar sesión
+    P->>FE: correo y contraseña
+    FE->>API: POST /auth/login
+    API-->>FE: token JWT
+  end
+  P->>FE: escribe el PIN
+  FE->>API: POST /carnet/{token}/open {pin}
+  API->>DB: busca el niño por token
+  alt No existe el QR o el usuario no es tutor del niño
+    API-->>FE: 404 (el mismo error, para no revelar cuál fue)
+  else Cuenta bloqueada por intentos fallidos
+    API-->>FE: 429 intenta de nuevo en N minutos
+  else PIN incorrecto
+    API-->>FE: 403 con los intentos restantes (al 5.º: 429, bloqueo de 15 min)
+  else Todo correcto
+    API->>DB: lee crecimiento y vacunas
+    API-->>FE: carnet del niño
+    FE-->>P: muestra el carnet
+  end

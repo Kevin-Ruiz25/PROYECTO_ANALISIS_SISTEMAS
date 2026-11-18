@@ -1,0 +1,38 @@
+flowchart TB
+  subgraph Cliente["Navegador"]
+    FE["Frontend React 18 + Vite<br/>páginas, gráficas (Recharts), rutas por rol"]
+  end
+
+  subgraph Servidor["Backend FastAPI (Python)"]
+    direction TB
+    R["Routers REST /api/*<br/>auth · niños · padres · crecimiento · vacunas<br/>alertas · carnet · reportes · canales"]
+    D["Seguridad<br/>JWT + roles (deps.py)"]
+    subgraph Servicios["Lógica de negocio"]
+      G["growth.py<br/>percentiles OMS (LMS)"]
+      V["vaccination.py<br/>esquema MSPAS"]
+      A["alerts.py<br/>reglas y notificaciones"]
+      N["notify.py<br/>elección de canal"]
+      C["carnet.py<br/>QR + PIN + bloqueo"]
+      RP["reports.py / exports.py<br/>reportes, Excel, PDF, campañas"]
+    end
+    BG["Tareas en segundo plano<br/>revisión periódica · sondeo de Telegram"]
+    ORM["SQLAlchemy 2.0"]
+  end
+
+  DB[("SQLite (desarrollo)<br/>PostgreSQL (producción)")]
+
+  subgraph Externos["Servicios externos"]
+    SMTP["Servidor SMTP<br/>(correo)"]
+    TG["API de Telegram<br/>(bot)"]
+    WA["WhatsApp Cloud API<br/>(Meta)"]
+  end
+
+  FE -- "HTTP/JSON (proxy /api)" --> R
+  R --> D
+  R --> Servicios
+  Servicios --> ORM --> DB
+  A --> N
+  N --> SMTP & TG & WA
+  BG --> A
+  BG --> TG
+  Padre(["Padre de familia"]) -. "recibe avisos" .-> SMTP & TG & WA

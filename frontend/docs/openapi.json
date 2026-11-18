@@ -1,0 +1,4052 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SCCVI - Control de Crecimiento y Vacunación Infantil",
+    "description": "\nAPI REST del **Sistema de Control de Crecimiento y Vacunación Infantil (SCCVI)** para centros de salud municipales.\n\n### Cómo probarla desde esta página\n1. Usa **POST /api/auth/login** con tu correo y contraseña (campos `username` y `password`) y copia el `access_token`.\n2. Pulsa el botón **Authorize** (arriba a la derecha) y pega el token, o escribe correo y contraseña directamente.\n3. Ya puedes ejecutar los demás endpoints con **Try it out**.\n\n### Roles\n| Rol | Alcance |\n|---|---|\n| `admin` | Todo, incluida la creación de usuarios |\n| `manager` (encargado del centro) | Todo lo del personal de salud, más reportes, campañas y catálogo de vacunas |\n| `health_staff` (enfermería/médico) | Niños, padres, crecimiento, vacunación, alertas y carnet |\n| `parent` | Solo sus propios hijos y su carnet digital (con PIN) |\n\n### Convenciones\n- Los errores devuelven `{\"detail\": \"mensaje en español\"}` con el código HTTP correspondiente\n  (401 sin sesión, 403 sin permiso, 404 no existe, 409 conflicto, 422 datos inválidos).\n- Las fechas usan el formato ISO `AAAA-MM-DD`.\n- Los percentiles se calculan con las tablas LMS de la OMS (0 a 60 meses).\n",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Iniciar sesión",
+        "description": "**Acceso:** Público.",
+        "operationId": "login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_login_api_auth_login_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Token"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Datos del usuario actual",
+        "description": "**Acceso:** Cualquier usuario con sesión iniciada.",
+        "operationId": "me_api_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/auth/users": {
+      "post": {
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Crear un usuario del sistema",
+        "description": "**Acceso:** Solo administrador.",
+        "operationId": "create_user_api_auth_users_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Cambiar mi contraseña",
+        "description": "**Acceso:** Cualquier usuario con sesión iniciada.",
+        "operationId": "change_password_api_auth_change_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/communities": {
+      "get": {
+        "tags": [
+          "Comunidades"
+        ],
+        "summary": "Listar comunidades",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "list_communities_api_communities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CommunityOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Communities Api Communities Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Comunidades"
+        ],
+        "summary": "Crear una comunidad",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "create_community_api_communities_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommunityCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/communities/{community_id}": {
+      "get": {
+        "tags": [
+          "Comunidades"
+        ],
+        "summary": "Ver una comunidad",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "get_community_api_communities__community_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Community Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Comunidades"
+        ],
+        "summary": "Actualizar una comunidad",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "update_community_api_communities__community_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Community Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommunityCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Comunidades"
+        ],
+        "summary": "Eliminar una comunidad",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "delete_community_api_communities__community_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Community Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/parents": {
+      "get": {
+        "tags": [
+          "Padres de familia"
+        ],
+        "summary": "Listar padres o tutores (búsqueda por nombre/DPI y comunidad)",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "list_parents_api_parents_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "community_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Community Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ParentOut"
+                  },
+                  "title": "Response List Parents Api Parents Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Padres de familia"
+        ],
+        "summary": "Registrar un padre o tutor",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "create_parent_api_parents_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/parents/{parent_id}": {
+      "get": {
+        "tags": [
+          "Padres de familia"
+        ],
+        "summary": "Ver un padre o tutor",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "get_parent_api_parents__parent_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Parent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Padres de familia"
+        ],
+        "summary": "Actualizar datos de un padre o tutor",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "update_parent_api_parents__parent_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Parent Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParentUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Padres de familia"
+        ],
+        "summary": "Eliminar un padre o tutor (sin niños asociados)",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "delete_parent_api_parents__parent_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Parent Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/children": {
+      "get": {
+        "tags": [
+          "Niños"
+        ],
+        "summary": "Listar niños (búsqueda y filtro por comunidad)",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "list_children_api_children_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "community_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Community Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChildOut"
+                  },
+                  "title": "Response List Children Api Children Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Niños"
+        ],
+        "summary": "Registrar un niño",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "create_child_api_children_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChildCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChildOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/children/{child_id}": {
+      "get": {
+        "tags": [
+          "Niños"
+        ],
+        "summary": "Ver un niño con sus padres",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "get_child_api_children__child_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Child Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChildOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Niños"
+        ],
+        "summary": "Actualizar un niño",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "update_child_api_children__child_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Child Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChildUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChildOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Niños"
+        ],
+        "summary": "Eliminar un niño y su historial",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "delete_child_api_children__child_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Child Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/growth/reference": {
+      "get": {
+        "tags": [
+          "Crecimiento"
+        ],
+        "summary": "Curvas de referencia OMS",
+        "description": "Curvas de referencia OMS (P5, P25, P50, P75, P95) para peso y talla, de 0 a 60 meses.\n\n**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "reference_api_growth_reference_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sex",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Sex"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/children/{child_id}/growth": {
+      "get": {
+        "tags": [
+          "Crecimiento"
+        ],
+        "summary": "Historial de controles de un niño",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "list_records_api_children__child_id__growth_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Child Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrowthOut"
+                  },
+                  "title": "Response List Records Api Children  Child Id  Growth Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Crecimiento"
+        ],
+        "summary": "Registrar un control de peso y talla",
+        "description": "**Acceso:** Personal de salud, encargado y administrador. Calcula percentiles OMS, evalúa alertas y avisa a los padres si corresponde.",
+        "operationId": "create_record_api_children__child_id__growth_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Child Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrowthCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrowthOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/growth/{record_id}": {
+      "delete": {
+        "tags": [
+          "Crecimiento"
+        ],
+        "summary": "Eliminar un control",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "delete_record_api_growth__record_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "record_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Record Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vaccines": {
+      "get": {
+        "tags": [
+          "Catálogo de vacunas"
+        ],
+        "summary": "Listar el catálogo de vacunas",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "list_vaccines_api_vaccines_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VaccineOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Vaccines Api Vaccines Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Catálogo de vacunas"
+        ],
+        "summary": "Agregar una vacuna al catálogo",
+        "description": "**Acceso:** Encargado del centro y administrador.",
+        "operationId": "create_vaccine_api_vaccines_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VaccineCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaccineOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/vaccines/{vaccine_id}": {
+      "put": {
+        "tags": [
+          "Catálogo de vacunas"
+        ],
+        "summary": "Actualizar una vacuna del catálogo",
+        "description": "**Acceso:** Encargado del centro y administrador.",
+        "operationId": "update_vaccine_api_vaccines__vaccine_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vaccine_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vaccine Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VaccineCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaccineOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Catálogo de vacunas"
+        ],
+        "summary": "Eliminar una vacuna del catálogo",
+        "description": "**Acceso:** Encargado del centro y administrador.",
+        "operationId": "delete_vaccine_api_vaccines__vaccine_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vaccine_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vaccine Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/children/{child_id}/vaccination-card": {
+      "get": {
+        "tags": [
+          "Vacunación"
+        ],
+        "summary": "Carnet de vacunación de un niño",
+        "description": "**Acceso:** Personal de salud, encargado y administrador. Estados: completa, atrasada, pendiente y próxima.",
+        "operationId": "vaccination_card_api_children__child_id__vaccination_card_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Child Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/children/{child_id}/vaccinations": {
+      "post": {
+        "tags": [
+          "Vacunación"
+        ],
+        "summary": "Registrar una dosis aplicada",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "register_vaccination_api_children__child_id__vaccinations_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Child Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VaccinationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaccinationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vaccinations/{vaccination_id}": {
+      "delete": {
+        "tags": [
+          "Vacunación"
+        ],
+        "summary": "Anular el registro de una dosis",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "delete_vaccination_api_vaccinations__vaccination_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vaccination_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vaccination Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts": {
+      "get": {
+        "tags": [
+          "Alertas"
+        ],
+        "summary": "Listar alertas",
+        "description": "status: open | resolved | all. Las críticas aparecen primero.\n\n**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "list_alerts_api_alerts_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "open",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "child_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Child Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 500,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AlertOut"
+                  },
+                  "title": "Response List Alerts Api Alerts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts/evaluate": {
+      "post": {
+        "tags": [
+          "Alertas"
+        ],
+        "summary": "Revisar todos los niños ahora",
+        "description": "Revisa todos los niños, abre/cierra alertas y envía las notificaciones por correo.\n\n**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "evaluate_all_api_alerts_evaluate_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "tags": [
+          "Alertas"
+        ],
+        "summary": "Listar notificaciones enviadas a los padres",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "list_notifications_api_notifications_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationOut"
+                  },
+                  "title": "Response List Notifications Api Notifications Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/dispatch": {
+      "post": {
+        "tags": [
+          "Alertas"
+        ],
+        "summary": "Reintentar notificaciones pendientes o con error",
+        "description": "Reintenta el envío de las notificaciones pendientes o con error.\n\n**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "dispatch_api_notifications_dispatch_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/mail/status": {
+      "get": {
+        "tags": [
+          "Alertas"
+        ],
+        "summary": "Modo del correo (solo correo; ver /api/channels/status)",
+        "description": "'smtp' = envío real, 'console' = simulado en la terminal del backend, 'none' = sin configurar.\n\n**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "mail_status_api_mail_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/children/{child_id}/carnet": {
+      "get": {
+        "tags": [
+          "Carnet digital"
+        ],
+        "summary": "Estado del carnet digital de un niño",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "carnet_status_api_children__child_id__carnet_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Child Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CarnetStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Carnet digital"
+        ],
+        "summary": "Emitir carnet digital (QR y PIN)",
+        "description": "Genera el carnet. Si ya existía, emite un QR y un PIN nuevos (el QR anterior deja de servir).\n\n**Acceso:** Personal de salud, encargado y administrador. El PIN solo se muestra una vez.",
+        "operationId": "issue_carnet_api_children__child_id__carnet_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Child Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CarnetIssued"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Carnet digital"
+        ],
+        "summary": "Revocar el carnet digital",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "revoke_carnet_api_children__child_id__carnet_delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Child Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/children/{child_id}/carnet/pin": {
+      "post": {
+        "tags": [
+          "Carnet digital"
+        ],
+        "summary": "Generar un PIN nuevo",
+        "description": "PIN nuevo con el mismo QR (PIN olvidado o cuenta bloqueada).\n\n**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "new_pin_api_children__child_id__carnet_pin_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Child Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PinIssued"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/parents/{parent_id}/access": {
+      "post": {
+        "tags": [
+          "Carnet digital"
+        ],
+        "summary": "Crear o restablecer la cuenta de un padre",
+        "description": "Crea (o restablece) la cuenta del padre/tutor con una contraseña temporal que se muestra una vez.\n\n**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "grant_access_api_parents__parent_id__access_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Parent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessGranted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/children": {
+      "get": {
+        "tags": [
+          "Carnet digital"
+        ],
+        "summary": "Mis hijos",
+        "description": "**Acceso:** Padre de familia con cuenta.",
+        "operationId": "my_children_api_me_children_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MyChild"
+                  },
+                  "type": "array",
+                  "title": "Response My Children Api Me Children Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/carnet/{token}/open": {
+      "post": {
+        "tags": [
+          "Carnet digital"
+        ],
+        "summary": "Abrir el carnet de un niño con QR + PIN",
+        "description": "**Acceso:** Padre de familia con cuenta. Solo el padre autorizado; 5 PIN errados bloquean 15 minutos.",
+        "operationId": "open_carnet_api_carnet__token__open_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PinIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CarnetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/summary": {
+      "get": {
+        "tags": [
+          "Reportes y campañas"
+        ],
+        "summary": "Resumen de indicadores del centro",
+        "description": "**Acceso:** Encargado del centro y administrador.",
+        "operationId": "report_summary_api_reports_summary_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "community_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Community Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/{kind}": {
+      "get": {
+        "tags": [
+          "Reportes y campañas"
+        ],
+        "summary": "Obtener un reporte",
+        "description": "**Acceso:** Encargado del centro y administrador. `kind`: bajo-peso, sobrepeso, vacunas-incompletas, cobertura, crecimiento o crecimiento-edad.",
+        "operationId": "get_report_api_reports__kind__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "community_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Community Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/{kind}/export": {
+      "get": {
+        "tags": [
+          "Reportes y campañas"
+        ],
+        "summary": "Descargar un reporte en Excel o PDF",
+        "description": "**Acceso:** Encargado del centro y administrador. `format`: xlsx o pdf.",
+        "operationId": "export_report_api_reports__kind__export_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(xlsx|pdf)$",
+              "default": "xlsx",
+              "title": "Format"
+            }
+          },
+          {
+            "name": "community_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Community Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/campaigns/vaccine-names": {
+      "get": {
+        "tags": [
+          "Reportes y campañas"
+        ],
+        "summary": "Nombres de vacunas para filtrar campañas",
+        "description": "**Acceso:** Encargado del centro y administrador.",
+        "operationId": "vaccine_names_api_campaigns_vaccine_names_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/campaigns/preview": {
+      "post": {
+        "tags": [
+          "Reportes y campañas"
+        ],
+        "summary": "Ver a quiénes alcanzaría una campaña",
+        "description": "Cuántos niños y padres alcanzaría la campaña, sin enviar nada.\n\n**Acceso:** Encargado del centro y administrador.",
+        "operationId": "campaign_preview_api_campaigns_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignFilter"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/campaigns/send": {
+      "post": {
+        "tags": [
+          "Reportes y campañas"
+        ],
+        "summary": "Enviar una campaña a los padres del grupo elegido",
+        "description": "Crea un aviso por cada padre/tutor (uno solo aunque tenga varios niños) y lo envía por correo.\n\n**Acceso:** Encargado del centro y administrador.",
+        "operationId": "campaign_send_api_campaigns_send_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignSend"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/channels/status": {
+      "get": {
+        "tags": [
+          "Canales de aviso"
+        ],
+        "summary": "Estado de los canales de aviso",
+        "description": "Estado de cada canal: 'smtp'/'api' = envío real, 'console' = simulado, 'none' = sin configurar.\n\n**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "channels_status_api_channels_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/parents/{parent_id}/telegram/link": {
+      "post": {
+        "tags": [
+          "Canales de aviso"
+        ],
+        "summary": "Generar el enlace para vincular Telegram",
+        "description": "Genera el enlace que el padre abre en su celular para conectarse al bot (un solo uso).\n\n**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "telegram_link_api_parents__parent_id__telegram_link_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Parent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/parents/{parent_id}/telegram": {
+      "put": {
+        "tags": [
+          "Canales de aviso"
+        ],
+        "summary": "Registrar el chat de Telegram manualmente",
+        "description": "Registro manual del chat_id (útil para pruebas o si el padre ya se lo dio al personal).\n\n**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "telegram_set_chat_api_parents__parent_id__telegram_put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Parent Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatId"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Canales de aviso"
+        ],
+        "summary": "Desvincular Telegram",
+        "description": "**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "telegram_unlink_api_parents__parent_id__telegram_delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Parent Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/telegram/sync": {
+      "post": {
+        "tags": [
+          "Canales de aviso"
+        ],
+        "summary": "Consultar ahora los mensajes nuevos del bot",
+        "description": "Consulta ahora los mensajes nuevos del bot (la consulta también corre sola en segundo plano).\n\n**Acceso:** Personal de salud, encargado y administrador.",
+        "operationId": "telegram_sync_api_telegram_sync_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "Sistema"
+        ],
+        "summary": "Estado del servidor",
+        "description": "**Acceso:** Público.",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AccessGranted": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "temporary_password": {
+            "type": "string",
+            "title": "Temporary Password"
+          },
+          "created": {
+            "type": "boolean",
+            "title": "Created"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "temporary_password",
+          "created"
+        ],
+        "title": "AccessGranted"
+      },
+      "AlertOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "child_id": {
+            "type": "integer",
+            "title": "Child Id"
+          },
+          "child_name": {
+            "type": "string",
+            "title": "Child Name"
+          },
+          "community_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Community Name"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "resolved": {
+            "type": "boolean",
+            "title": "Resolved"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "child_id",
+          "child_name",
+          "community_name",
+          "type",
+          "reason",
+          "message",
+          "created_at",
+          "resolved"
+        ],
+        "title": "AlertOut"
+      },
+      "Body_login_api_auth_login_post": {
+        "properties": {
+          "grant_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "password"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grant Type"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope",
+            "default": ""
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Secret"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "Body_login_api_auth_login_post"
+      },
+      "CampaignFilter": {
+        "properties": {
+          "community_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Community Ids",
+            "default": []
+          },
+          "age_min_months": {
+            "type": "integer",
+            "maximum": 216.0,
+            "minimum": 0.0,
+            "title": "Age Min Months",
+            "default": 0
+          },
+          "age_max_months": {
+            "type": "integer",
+            "maximum": 216.0,
+            "minimum": 0.0,
+            "title": "Age Max Months",
+            "default": 60
+          },
+          "vaccination": {
+            "type": "string",
+            "pattern": "^(todos|con_pendientes|atrasadas|al_dia)$",
+            "title": "Vaccination",
+            "default": "con_pendientes"
+          },
+          "vaccine_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vaccine Name"
+          }
+        },
+        "type": "object",
+        "title": "CampaignFilter"
+      },
+      "CampaignSend": {
+        "properties": {
+          "community_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Community Ids",
+            "default": []
+          },
+          "age_min_months": {
+            "type": "integer",
+            "maximum": 216.0,
+            "minimum": 0.0,
+            "title": "Age Min Months",
+            "default": 0
+          },
+          "age_max_months": {
+            "type": "integer",
+            "maximum": 216.0,
+            "minimum": 0.0,
+            "title": "Age Max Months",
+            "default": 60
+          },
+          "vaccination": {
+            "type": "string",
+            "pattern": "^(todos|con_pendientes|atrasadas|al_dia)$",
+            "title": "Vaccination",
+            "default": "con_pendientes"
+          },
+          "vaccine_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vaccine Name"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 3,
+            "title": "Title"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1500,
+            "minLength": 10,
+            "title": "Message"
+          },
+          "event_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Date"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "message"
+        ],
+        "title": "CampaignSend"
+      },
+      "CardItem": {
+        "properties": {
+          "vaccine": {
+            "$ref": "#/components/schemas/VaccineOut"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Due Date"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "vaccination_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vaccination Id"
+          },
+          "applied_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied On"
+          },
+          "next_dose_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Dose On"
+          }
+        },
+        "type": "object",
+        "required": [
+          "vaccine",
+          "due_date",
+          "status",
+          "vaccination_id",
+          "applied_on",
+          "next_dose_on"
+        ],
+        "title": "CardItem"
+      },
+      "CardOut": {
+        "properties": {
+          "child_id": {
+            "type": "integer",
+            "title": "Child Id"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/CardSummary"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CardItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "child_id",
+          "summary",
+          "items"
+        ],
+        "title": "CardOut"
+      },
+      "CardSummary": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "completa": {
+            "type": "integer",
+            "title": "Completa"
+          },
+          "atrasada": {
+            "type": "integer",
+            "title": "Atrasada"
+          },
+          "pendiente": {
+            "type": "integer",
+            "title": "Pendiente"
+          },
+          "proxima": {
+            "type": "integer",
+            "title": "Proxima"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "completa",
+          "atrasada",
+          "pendiente",
+          "proxima"
+        ],
+        "title": "CardSummary"
+      },
+      "CarnetIssued": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "qr": {
+            "type": "string",
+            "title": "Qr"
+          },
+          "pin": {
+            "type": "string",
+            "title": "Pin"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "qr",
+          "pin"
+        ],
+        "title": "CarnetIssued"
+      },
+      "CarnetOut": {
+        "properties": {
+          "child_name": {
+            "type": "string",
+            "title": "Child Name"
+          },
+          "birth_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Birth Date"
+          },
+          "sex": {
+            "type": "string",
+            "title": "Sex"
+          },
+          "community_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Community Name"
+          },
+          "vaccination": {
+            "$ref": "#/components/schemas/CardOut"
+          },
+          "growth": {
+            "items": {
+              "$ref": "#/components/schemas/GrowthOut"
+            },
+            "type": "array",
+            "title": "Growth"
+          }
+        },
+        "type": "object",
+        "required": [
+          "child_name",
+          "birth_date",
+          "sex",
+          "community_name",
+          "vaccination",
+          "growth"
+        ],
+        "title": "CarnetOut"
+      },
+      "CarnetStatus": {
+        "properties": {
+          "has_carnet": {
+            "type": "boolean",
+            "title": "Has Carnet"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "qr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "has_carnet"
+        ],
+        "title": "CarnetStatus"
+      },
+      "Channel": {
+        "type": "string",
+        "enum": [
+          "email",
+          "telegram",
+          "whatsapp"
+        ],
+        "title": "Channel"
+      },
+      "ChatId": {
+        "properties": {
+          "chat_id": {
+            "type": "string",
+            "pattern": "^-?\\d{3,20}$",
+            "title": "Chat Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chat_id"
+        ],
+        "title": "ChatId"
+      },
+      "ChildCreate": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "minLength": 2,
+            "title": "Full Name"
+          },
+          "birth_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Birth Date"
+          },
+          "sex": {
+            "$ref": "#/components/schemas/Sex"
+          },
+          "community_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Community Id"
+          },
+          "parent_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Parent Ids",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "full_name",
+          "birth_date",
+          "sex"
+        ],
+        "title": "ChildCreate"
+      },
+      "ChildOut": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "minLength": 2,
+            "title": "Full Name"
+          },
+          "birth_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Birth Date"
+          },
+          "sex": {
+            "$ref": "#/components/schemas/Sex"
+          },
+          "community_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Community Id"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "parents": {
+            "items": {
+              "$ref": "#/components/schemas/ParentOut"
+            },
+            "type": "array",
+            "title": "Parents",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "full_name",
+          "birth_date",
+          "sex",
+          "id"
+        ],
+        "title": "ChildOut"
+      },
+      "ChildUpdate": {
+        "properties": {
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "birth_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Sex"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "community_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Community Id"
+          },
+          "parent_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Ids"
+          }
+        },
+        "type": "object",
+        "title": "ChildUpdate"
+      },
+      "CommunityCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "title": "Name"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "estimated_families": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Estimated Families",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "CommunityCreate"
+      },
+      "CommunityOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "title": "Name"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "estimated_families": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Estimated Families",
+            "default": 0
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "id"
+        ],
+        "title": "CommunityOut"
+      },
+      "GrowthCreate": {
+        "properties": {
+          "measured_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Measured On"
+          },
+          "weight_kg": {
+            "type": "number",
+            "exclusiveMaximum": 60.0,
+            "exclusiveMinimum": 0.3,
+            "title": "Weight Kg",
+            "description": "Peso en kilogramos"
+          },
+          "height_cm": {
+            "type": "number",
+            "exclusiveMaximum": 150.0,
+            "exclusiveMinimum": 20.0,
+            "title": "Height Cm",
+            "description": "Longitud o talla en centímetros"
+          }
+        },
+        "type": "object",
+        "required": [
+          "measured_on",
+          "weight_kg",
+          "height_cm"
+        ],
+        "title": "GrowthCreate"
+      },
+      "GrowthOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "child_id": {
+            "type": "integer",
+            "title": "Child Id"
+          },
+          "measured_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Measured On"
+          },
+          "weight_kg": {
+            "type": "number",
+            "title": "Weight Kg"
+          },
+          "height_cm": {
+            "type": "number",
+            "title": "Height Cm"
+          },
+          "age_months": {
+            "type": "number",
+            "title": "Age Months"
+          },
+          "weight_percentile": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Percentile"
+          },
+          "height_percentile": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Percentile"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "child_id",
+          "measured_on",
+          "weight_kg",
+          "height_cm",
+          "age_months",
+          "weight_percentile",
+          "height_percentile"
+        ],
+        "title": "GrowthOut"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "MyChild": {
+        "properties": {
+          "child_id": {
+            "type": "integer",
+            "title": "Child Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "birth_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Birth Date"
+          },
+          "has_carnet": {
+            "type": "boolean",
+            "title": "Has Carnet"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "child_id",
+          "full_name",
+          "birth_date",
+          "has_carnet"
+        ],
+        "title": "MyChild"
+      },
+      "NotificationOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "parent_id": {
+            "type": "integer",
+            "title": "Parent Id"
+          },
+          "parent_name": {
+            "type": "string",
+            "title": "Parent Name"
+          },
+          "child_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Child Id"
+          },
+          "child_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Child Name"
+          },
+          "alert_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Id"
+          },
+          "channel": {
+            "type": "string",
+            "title": "Channel"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "parent_id",
+          "parent_name",
+          "child_id",
+          "child_name",
+          "alert_id",
+          "channel",
+          "subject",
+          "status",
+          "sent_at"
+        ],
+        "title": "NotificationOut"
+      },
+      "ParentCreate": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "minLength": 2,
+            "title": "Full Name"
+          },
+          "dpi": {
+            "type": "string",
+            "minLength": 5,
+            "title": "Dpi"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "preferred_channel": {
+            "$ref": "#/components/schemas/Channel",
+            "default": "email"
+          },
+          "community_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Community Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "full_name",
+          "dpi"
+        ],
+        "title": "ParentCreate"
+      },
+      "ParentOut": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "minLength": 2,
+            "title": "Full Name"
+          },
+          "dpi": {
+            "type": "string",
+            "minLength": 5,
+            "title": "Dpi"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "preferred_channel": {
+            "$ref": "#/components/schemas/Channel",
+            "default": "email"
+          },
+          "community_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Community Id"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "telegram_linked": {
+            "type": "boolean",
+            "title": "Telegram Linked",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "full_name",
+          "dpi",
+          "id"
+        ],
+        "title": "ParentOut"
+      },
+      "ParentUpdate": {
+        "properties": {
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "preferred_channel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Channel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "community_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Community Id"
+          }
+        },
+        "type": "object",
+        "title": "ParentUpdate"
+      },
+      "PasswordChange": {
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "title": "Current Password"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 8,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "PasswordChange"
+      },
+      "PinIn": {
+        "properties": {
+          "pin": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Pin"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pin"
+        ],
+        "title": "PinIn"
+      },
+      "PinIssued": {
+        "properties": {
+          "pin": {
+            "type": "string",
+            "title": "Pin"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pin"
+        ],
+        "title": "PinIssued"
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "admin",
+          "health_staff",
+          "manager",
+          "parent"
+        ],
+        "title": "Role"
+      },
+      "Sex": {
+        "type": "string",
+        "enum": [
+          "M",
+          "F"
+        ],
+        "title": "Sex"
+      },
+      "Token": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "user"
+        ],
+        "title": "Token"
+      },
+      "UserCreate": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "title": "Password"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role",
+            "default": "health_staff"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "full_name",
+          "password"
+        ],
+        "title": "UserCreate"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "role"
+        ],
+        "title": "UserOut"
+      },
+      "VaccinationCreate": {
+        "properties": {
+          "vaccine_id": {
+            "type": "integer",
+            "title": "Vaccine Id"
+          },
+          "applied_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Applied On"
+          },
+          "next_dose_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Dose On"
+          }
+        },
+        "type": "object",
+        "required": [
+          "vaccine_id",
+          "applied_on"
+        ],
+        "title": "VaccinationCreate"
+      },
+      "VaccinationOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "child_id": {
+            "type": "integer",
+            "title": "Child Id"
+          },
+          "vaccine_id": {
+            "type": "integer",
+            "title": "Vaccine Id"
+          },
+          "applied_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied On"
+          },
+          "next_dose_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Dose On"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VaccinationStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "child_id",
+          "vaccine_id",
+          "applied_on",
+          "next_dose_on",
+          "status"
+        ],
+        "title": "VaccinationOut"
+      },
+      "VaccinationStatus": {
+        "type": "string",
+        "enum": [
+          "completa",
+          "pendiente"
+        ],
+        "title": "VaccinationStatus"
+      },
+      "VaccineCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 2,
+            "title": "Name"
+          },
+          "recommended_age_months": {
+            "type": "integer",
+            "maximum": 216.0,
+            "minimum": 0.0,
+            "title": "Recommended Age Months",
+            "description": "0 = al nacer"
+          },
+          "dose_number": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Dose Number",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "recommended_age_months"
+        ],
+        "title": "VaccineCreate"
+      },
+      "VaccineOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 2,
+            "title": "Name"
+          },
+          "recommended_age_months": {
+            "type": "integer",
+            "maximum": 216.0,
+            "minimum": 0.0,
+            "title": "Recommended Age Months",
+            "description": "0 = al nacer"
+          },
+          "dose_number": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Dose Number",
+            "default": 1
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "recommended_age_months",
+          "id"
+        ],
+        "title": "VaccineOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "OAuth2PasswordBearer": {
+        "type": "oauth2",
+        "flows": {
+          "password": {
+            "scopes": {},
+            "tokenUrl": "/api/auth/login"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Autenticación",
+      "description": "Inicio de sesión (JWT), usuario actual, alta de usuarios y cambio de contraseña."
+    },
+    {
+      "name": "Comunidades",
+      "description": "Comunidades o aldeas atendidas por el centro de salud."
+    },
+    {
+      "name": "Padres de familia",
+      "description": "Padres y tutores, su canal de aviso preferido y datos de contacto."
+    },
+    {
+      "name": "Niños",
+      "description": "Registro de niños y su vínculo con padres/tutores y comunidad."
+    },
+    {
+      "name": "Crecimiento",
+      "description": "Controles de peso y talla con percentiles OMS y curvas de referencia."
+    },
+    {
+      "name": "Catálogo de vacunas",
+      "description": "Esquema de vacunación del MSPAS (editable por administrador y encargado)."
+    },
+    {
+      "name": "Vacunación",
+      "description": "Carnet de vacunación de cada niño: dosis aplicadas, atrasadas y pendientes."
+    },
+    {
+      "name": "Alertas",
+      "description": "Alertas preventivas y críticas, y notificaciones enviadas a los padres."
+    },
+    {
+      "name": "Carnet digital",
+      "description": "Carnet con código QR y PIN, y acceso seguro de los padres a la información de sus hijos."
+    },
+    {
+      "name": "Reportes y campañas",
+      "description": "Reportes para el encargado (con exportación a Excel y PDF) y campañas masivas de aviso."
+    },
+    {
+      "name": "Canales de aviso",
+      "description": "Estado de correo, Telegram y WhatsApp, y vinculación de padres con el bot de Telegram."
+    },
+    {
+      "name": "Sistema",
+      "description": "Comprobación de estado del servidor."
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+classDiagram
+  direction LR
+  class User {
+    +int id
+    +str email
+    +str full_name
+    +str hashed_password
+    +Role role
+    +bool is_active
+  }
+  class Community {
+    +int id
+    +str name
+    +str location
+    +int estimated_families
+  }
+  class Parent {
+    +int id
+    +str full_name
+    +str dpi
+    +str phone
+    +str email
+    +Channel preferred_channel
+    +str telegram_chat_id
+    +str telegram_link_code
+  }
+  class Child {
+    +int id
+    +str full_name
+    +date birth_date
+    +Sex sex
+    +str qr_token
+    +str qr_pin_hash
+  }
+  class GrowthRecord {
+    +int id
+    +date measured_on
+    +float weight_kg
+    +float height_cm
+    +float age_months
+    +float weight_percentile
+    +float height_percentile
+  }
+  class Vaccine {
+    +int id
+    +str name
+    +int recommended_age_months
+    +int dose_number
+  }
+  class Vaccination {
+    +int id
+    +date applied_on
+    +date next_dose_on
+    +VaccinationStatus status
+  }
+  class Alert {
+    +int id
+    +AlertType type
+    +str reason
+    +str message
+    +datetime created_at
+    +bool resolved
+  }
+  class Notification {
+    +int id
+    +Channel channel
+    +str subject
+    +str body
+    +datetime sent_at
+    +str status
+  }
+  class Role {
+    <<enumeration>>
+    admin
+    health_staff
+    manager
+    parent
+  }
+  class Channel {
+    <<enumeration>>
+    email
+    telegram
+    whatsapp
+  }
+  class AlertType {
+    <<enumeration>>
+    preventiva
+    critica
+  }
+  class Sex {
+    <<enumeration>>
+    M
+    F
+  }
+
+  Community "1" --> "0..*" Parent : agrupa
+  Community "1" --> "0..*" Child : agrupa
+  Parent "0..*" -- "0..*" Child : tutor de
+  Parent "0..1" --> "1" User : cuenta de acceso
+  Child "1" *-- "0..*" GrowthRecord : controles
+  Child "1" *-- "0..*" Vaccination : dosis aplicadas
+  Vaccine "1" <-- "0..*" Vaccination : de la vacuna
+  Child "1" *-- "0..*" Alert : alertas
+  Alert "1" <-- "0..*" Notification : origina
+  Parent "1" <-- "0..*" Notification : destinatario

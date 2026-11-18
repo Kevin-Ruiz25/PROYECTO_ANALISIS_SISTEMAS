@@ -1,0 +1,25 @@
+sequenceDiagram
+  autonumber
+  actor E as Personal de salud
+  actor P as Padre
+  participant FE as Frontend
+  participant API as Backend
+  participant TG as API de Telegram
+  participant DB as Base de datos
+
+  E->>FE: "Vincular" en Padres de familia
+  FE->>API: POST /parents/{id}/telegram/link
+  API->>TG: getMe (nombre del bot)
+  API->>DB: guarda código de un solo uso
+  API-->>FE: enlace t.me/bot?start=código
+  E->>P: envía el enlace
+  P->>TG: abre el enlace y pulsa "Iniciar"
+  TG-->>P: mensaje /start código al bot
+  loop Sondeo en segundo plano (getUpdates)
+    API->>TG: ¿mensajes nuevos?
+    TG-->>API: /start código + chat_id
+  end
+  API->>DB: busca al padre por el código
+  API->>DB: guarda chat_id y borra el código
+  API->>TG: sendMessage "¡Listo!, recibirás aquí los avisos"
+  TG-->>P: confirmación

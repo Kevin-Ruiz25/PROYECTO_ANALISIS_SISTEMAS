@@ -1,0 +1,40 @@
+flowchart LR
+  classDef actor fill:#fff,stroke:#0e6b6b,stroke-width:2px,color:#17323a
+  classDef uc fill:#eef6f4,stroke:#0e6b6b,color:#17323a
+  PS(["Personal de salud"])
+  EN(["Encargado del centro"])
+  AD(["Administrador"])
+  PA(["Padre / tutor"])
+  SI(["Sistema<br/>(revisión automática)"])
+
+  subgraph SCCVI["Sistema SCCVI"]
+    UC1(["Registrar niño"])
+    UC2(["Registrar medición<br/>(peso y talla)"])
+    UC3(["Generar curva de crecimiento"])
+    UC4(["Detectar anomalía"])
+    UC5(["Enviar alerta"])
+    UC6(["Registrar vacuna"])
+    UC7(["Generar carnet QR"])
+    UC8(["Enviar campaña comunitaria"])
+    UC9(["Consultar carnet<br/>con QR + PIN"])
+    UC10(["Ver reportes y exportar<br/>Excel / PDF"])
+    UC11(["Administrar catálogo<br/>de vacunas"])
+    UC12(["Vincular Telegram"])
+    UC13(["Crear usuarios y accesos"])
+  end
+
+  PS --- UC1 & UC2 & UC6 & UC7 & UC12
+  EN --- UC8 & UC10 & UC11
+  EN -. "también puede" .-> PS
+  AD --- UC13
+  AD -. "también puede" .-> EN
+  PA --- UC9 & UC12
+  SI --- UC4
+
+  UC2 -. "«include»" .-> UC3
+  UC2 -. "«include»" .-> UC4
+  UC6 -. "«include»" .-> UC4
+  UC4 -. "«extend»<br/>si hay anomalía" .-> UC5
+  UC8 -. "«include»" .-> UC5
+  class PS,EN,AD,PA,SI actor
+  class UC1,UC2,UC3,UC4,UC5,UC6,UC7,UC8,UC9,UC10,UC11,UC12,UC13 uc

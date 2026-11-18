@@ -1,0 +1,20 @@
+flowchart TD
+  S(["Evaluar niño"]) --> Q1{"¿Último percentil<br/>de peso?"}
+  Q1 -- "menor a 5" --> A1["peso_bajo<br/>CRÍTICA"]
+  Q1 -- "mayor a 95" --> A2["peso_alto<br/>PREVENTIVA"]
+  Q1 -- "entre 5 y 95" --> Q2
+  A1 --> Q2
+  A2 --> Q2
+  Q2{"¿Tiene 60 meses<br/>o menos?"} -- sí --> Q3{"Días desde el<br/>último control"}
+  Q2 -- no --> Q4
+  Q3 -- "más de 61 (menor de 2 años)<br/>más de 122 (2 a 5 años)<br/>o ninguno en más de 30 días de vida" --> A3["sin_controles<br/>PREVENTIVA"]
+  Q3 -- "al día" --> Q4
+  A3 --> Q4
+  Q4{"¿Dosis atrasadas?<br/>(más de 30 días sobre<br/>la fecha recomendada)"} -- "3 o más" --> A4["vacunas_atrasadas<br/>CRÍTICA"]
+  Q4 -- "1 o 2" --> A5["vacunas_atrasadas<br/>PREVENTIVA"]
+  Q4 -- ninguna --> F
+  A4 --> F
+  A5 --> F
+  F["Comparar con alertas abiertas"] --> R1["Condición nueva: crear alerta<br/>y notificar a los padres"]
+  F --> R2["Condición que ya no se cumple:<br/>cerrar la alerta sola"]
+  F --> R3["Condición que sigue: no duplicar<br/>(avisa de nuevo solo si escala a crítica)"]

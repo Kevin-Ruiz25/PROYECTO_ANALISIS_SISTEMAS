@@ -1,0 +1,36 @@
+sequenceDiagram
+  autonumber
+  actor E as Personal de salud
+  participant FE as Frontend
+  participant API as POST /children/{id}/growth
+  participant G as growth.py
+  participant DB as Base de datos
+  participant AL as alerts.py
+  participant NO as notify.py
+  participant BG as Tarea en segundo plano
+  participant CH as Correo / Telegram / WhatsApp
+  actor P as Padre
+
+  E->>FE: Ingresa peso y talla
+  FE->>API: {measured_on, weight_kg, height_cm}
+  API->>G: compute_for(nacimiento, sexo, fecha, peso, talla)
+  G-->>API: edad en meses y percentiles OMS
+  API->>DB: guarda GrowthRecord
+  API->>AL: evaluate_child(niño)
+  AL->>DB: lee controles y carnet de vacunas
+  alt Se cumple una condición (P<5, P>95, sin controles, vacunas atrasadas)
+    AL->>DB: crea Alert (preventiva o crítica)
+    loop por cada padre o tutor
+      AL->>NO: pick_channel(padre)
+      NO-->>AL: canal preferido o alternativo
+      AL->>DB: crea Notification (pendiente)
+    end
+  else La condición ya no aplica
+    AL->>DB: marca la alerta como resuelta
+  end
+  API-->>FE: 201 + percentiles
+  FE-->>E: muestra la gráfica y el estado
+  API-)BG: dispatch_pending()
+  BG->>CH: envía cada notificación pendiente
+  CH-->>P: aviso al celular o correo
+  BG->>DB: estado enviada / error / sin_contacto
