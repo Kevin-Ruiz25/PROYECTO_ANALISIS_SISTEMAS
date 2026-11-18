@@ -1,5 +1,5 @@
 
-reportes y campañas (rol Encargado del centro / Administrador)
+Reportes y campañas (rol Encargado del centro / Administrador)
 
 Instalar las dependencias nuevas en el backend: `pip install -r requirements.txt` (openpyxl y reportlab).
 
